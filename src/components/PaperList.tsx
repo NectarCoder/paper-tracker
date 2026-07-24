@@ -20,13 +20,14 @@ export const PaperList: React.FC<PaperListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredPapers = papers.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.abstract.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.authors?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.tags?.some(k => k.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const lowerSearchTerm = searchTerm.toLowerCase();
+  const filteredPapers = lowerSearchTerm ? papers.filter(p => 
+    p.title.toLowerCase().includes(lowerSearchTerm) ||
+    p.abstract.toLowerCase().includes(lowerSearchTerm) ||
+    p.authors?.toLowerCase().includes(lowerSearchTerm) ||
+    p.notes?.toLowerCase().includes(lowerSearchTerm) ||
+    p.tags?.some(k => k.toLowerCase().includes(lowerSearchTerm))
+  ) : papers;
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border-r border-slate-700">

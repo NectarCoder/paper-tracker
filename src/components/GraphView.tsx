@@ -3,6 +3,13 @@ import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d';
 import { Paper, PaperLink } from '../types';
 import './KnowledgeGraph.css'; // Keep reusing the CSS
 
+const BG_COLOR = '#0f172a';
+const NODE_COLOR = '#60a5fa';
+const GHOST_NODE_COLOR = '#94a3b8';
+const SELECTED_NODE_COLOR = '#a78bfa';
+const LINK_COLOR = 'rgba(255, 255, 255, 0.2)';
+const TEXT_COLOR = '#f8fafc';
+
 interface GraphViewProps {
   papers: Paper[];
   links: PaperLink[];
@@ -30,13 +37,15 @@ export const GraphView: React.FC<GraphViewProps> = ({
       val: 1 
     }));
 
+    const nodesById = new Map(nodes.map(n => [n.id, n]));
+    const nodesByDoi = new Map(nodes.filter(n => n.doi).map(n => [n.doi, n]));
     const ghostNodesMap = new Map<string, any>();
     
     const formattedLinks = links.map(l => {
       // Find source node (can be by DOI or ID)
-      const sourceNode = nodes.find(n => n.doi === l.source || n.id === l.source);
+      const sourceNode = nodesByDoi.get(l.source) || nodesById.get(l.source);
       // Find target node (by DOI)
-      let targetNode = nodes.find(n => n.doi === l.target);
+      let targetNode = nodesByDoi.get(l.target);
 
       if (!targetNode) {
         if (!ghostNodesMap.has(l.target)) {
@@ -89,13 +98,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
     }
   }, [onNodeClick]);
 
-  const bgColor = '#0f172a';
-  const nodeColor = '#60a5fa';
-  const ghostNodeColor = '#94a3b8';
-  const selectedNodeColor = '#a78bfa';
-  const linkColor = 'rgba(255, 255, 255, 0.2)';
-  const textColor = '#f8fafc';
-
   return (
     <div className="w-full h-full bg-slate-900 overflow-hidden" ref={containerRef}>
       {dimensions.width > 0 && dimensions.height > 0 && (
@@ -105,14 +107,14 @@ export const GraphView: React.FC<GraphViewProps> = ({
           height={dimensions.height}
           graphData={graphData}
           nodeId="id"
-          nodeColor={(node: any) => node.isGhost ? ghostNodeColor : (node.id === selectedPaperId ? selectedNodeColor : nodeColor)}
+          nodeColor={(node: any) => node.isGhost ? GHOST_NODE_COLOR : (node.id === selectedPaperId ? SELECTED_NODE_COLOR : NODE_COLOR)}
           nodeRelSize={6}
-          linkColor={() => linkColor}
+          linkColor={() => LINK_COLOR}
           linkWidth={2}
           linkDirectionalArrowLength={3.5}
           linkDirectionalArrowRelPos={1}
           onNodeClick={handleNodeClick}
-          backgroundColor={bgColor}
+          backgroundColor={BG_COLOR}
           nodeCanvasObject={(node: any, ctx, globalScale) => {
             const label = node.title;
             const fontSize = 12/globalScale;
@@ -120,14 +122,14 @@ export const GraphView: React.FC<GraphViewProps> = ({
             const textWidth = ctx.measureText(label).width;
             const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
 
-            ctx.fillStyle = bgColor;
+            ctx.fillStyle = BG_COLOR;
             ctx.globalAlpha = 0.8;
             ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - 10 - bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
             
             ctx.globalAlpha = 1;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = node.id === selectedPaperId ? selectedNodeColor : (node.isGhost ? ghostNodeColor : textColor);
+            ctx.fillStyle = node.id === selectedPaperId ? SELECTED_NODE_COLOR : (node.isGhost ? GHOST_NODE_COLOR : TEXT_COLOR);
             ctx.fillText(label, node.x, node.y - 10);
 
             // Draw Node circle
@@ -135,13 +137,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
             ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI, false);
             
             if (node.isGhost) {
-              ctx.strokeStyle = ghostNodeColor;
+              ctx.strokeStyle = GHOST_NODE_COLOR;
               ctx.setLineDash([2, 2]); // Dashed line for ghost nodes
               ctx.lineWidth = 1;
               ctx.stroke();
               ctx.setLineDash([]); // Reset
             } else {
-              ctx.fillStyle = node.id === selectedPaperId ? selectedNodeColor : nodeColor;
+              ctx.fillStyle = node.id === selectedPaperId ? SELECTED_NODE_COLOR : NODE_COLOR;
               ctx.fill();
               if (node.id === selectedPaperId) {
                  ctx.strokeStyle = '#fff';

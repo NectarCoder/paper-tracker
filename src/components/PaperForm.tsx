@@ -9,40 +9,26 @@ interface PaperFormProps {
   onSave: (paper: Paper) => void;
 }
 
+const DEFAULT_PAPER_DATA: Partial<Paper> = {
+  title: '',
+  doi: '',
+  link: '',
+  year: new Date().getFullYear(),
+  type: 'Conference',
+  ranking: 'Unranked',
+  reputation: '',
+  abstract: '',
+  authors: '',
+  tags: [],
+  notes: ''
+};
+
 export const PaperForm: React.FC<PaperFormProps> = ({ paper, isOpen, onClose, onSave }) => {
-  const [formData, setFormData] = useState<Partial<Paper>>({
-    title: '',
-    doi: '',
-    link: '',
-    year: new Date().getFullYear(),
-    type: 'Conference',
-    ranking: 'Unranked',
-    reputation: '',
-    abstract: '',
-    authors: '',
-    tags: [],
-    notes: ''
-  });
+  const [formData, setFormData] = useState<Partial<Paper>>(DEFAULT_PAPER_DATA);
   const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
-    if (paper) {
-      setFormData(paper);
-    } else {
-      setFormData({
-        title: '',
-        doi: '',
-        link: '',
-        year: new Date().getFullYear(),
-        type: 'Conference',
-        ranking: 'Unranked',
-        reputation: '',
-        abstract: '',
-        authors: '',
-        tags: [],
-        notes: ''
-      });
-    }
+    setFormData(paper || DEFAULT_PAPER_DATA);
     setTagInput('');
   }, [paper, isOpen]);
 

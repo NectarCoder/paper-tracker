@@ -118,10 +118,10 @@ export function useWorkspace() {
       ...prev,
       collections: prev.collections.map(c => {
         if (c.id === activeCollectionId) {
-          const exists = c.papers.some(p => p.id === paper.id);
-          const newPapers = exists 
-            ? c.papers.map(p => p.id === paper.id ? paper : p)
-            : [...c.papers, paper];
+          const idx = c.papers.findIndex(p => p.id === paper.id);
+          const newPapers = [...c.papers];
+          if (idx >= 0) newPapers[idx] = paper;
+          else newPapers.push(paper);
           return { ...c, papers: newPapers };
         }
         return c;

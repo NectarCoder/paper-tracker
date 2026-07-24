@@ -6,7 +6,10 @@ import { GraphView } from './components/GraphView';
 import { PaperForm } from './components/PaperForm';
 import { SplitPane } from './components/SplitPane';
 import { useWorkspace } from './hooks/useWorkspace';
-import { Paper } from './types';
+import { Paper, PaperLink } from './types';
+
+const EMPTY_PAPERS: Paper[] = [];
+const EMPTY_LINKS: PaperLink[] = [];
 
 function App() {
   const {
@@ -53,8 +56,8 @@ function App() {
     );
   }
 
-  const papers = activeCollection?.papers || [];
-  const links = activeCollection?.links || [];
+  const papers = activeCollection?.papers || EMPTY_PAPERS;
+  const links = activeCollection?.links || EMPTY_LINKS;
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-slate-900 text-slate-200">
