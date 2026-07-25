@@ -18,35 +18,59 @@ export function useWorkspace() {
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
 
   const createNewWorkspace = () => {
     const newWs = { ...DEFAULT_WORKSPACE, collections: [{ ...DEFAULT_WORKSPACE.collections[0], id: crypto.randomUUID() }] };
     setWorkspace(newWs);
     setActiveCollectionId(newWs.collections[0].id);
     setFileHandle(null);
+    setIsDirty(true);
+    setLastSavedTime(null);
   };
 
   const openWorkspace = async () => {
     try {
-      // @ts-ignore
-      const [handle] = await window.showOpenFilePicker({
-        types: [
-          {
-            description: 'Paper Tracker Workspace',
-            accept: {
-              'application/json': ['.ptrk', '.json'],
+      if ('showOpenFilePicker' in window) {
+        // @ts-ignore
+        const [handle] = await window.showOpenFilePicker({
+          types: [
+            {
+              description: 'Paper Tracker Workspace',
+              accept: {
+                'application/json': ['.ptrk', '.json'],
+              },
             },
-          },
-        ],
-      });
-      const file = await handle.getFile();
-      const text = await file.text();
-      const data = JSON.parse(text) as WorkspaceData;
-      setWorkspace(data);
-      if (data.collections.length > 0) {
-        setActiveCollectionId(data.collections[0].id);
+          ],
+        });
+        const file = await handle.getFile();
+        const text = await file.text();
+        const data = JSON.parse(text) as WorkspaceData;
+        setWorkspace(data);
+        if (data.collections.length > 0) {
+          setActiveCollectionId(data.collections[0].id);
+        }
+        setFileHandle(handle);
+        setIsDirty(false);
+        setLastSavedTime(new Date());
+      } else {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.ptrk,.json';
+        input.onchange = async (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (!file) return;
+          const text = await file.text();
+          const data = JSON.parse(text) as WorkspaceData;
+          setWorkspace(data);
+          if (data.collections.length > 0) setActiveCollectionId(data.collections[0].id);
+          setFileHandle(null);
+          setIsDirty(false);
+          setLastSavedTime(new Date());
+        };
+        input.click();
       }
-      setFileHandle(handle);
     } catch (error) {
       console.error("Failed to open file", error);
     }
@@ -56,35 +80,86 @@ export function useWorkspace() {
     if (!currentWs) return;
 
     try {
-      let handle = fileHandle;
-      if (!handle) {
-        // @ts-ignore
-        handle = await window.showSaveFilePicker({
-          suggestedName: `${currentWs.name.replace(/\s+/g, '_')}.ptrk`,
-          types: [
-            {
-              description: 'Paper Tracker Workspace',
-              accept: {
-                'application/json': ['.ptrk'],
+      if ('showSaveFilePicker' in window) {
+        let handle = fileHandle;
+        if (!handle) {
+          // @ts-ignore
+          handle = await window.showSaveFilePicker({
+            suggestedName: `${currentWs.name.replace(/\s+/g, '_')}.ptrk`,
+            types: [
+              {
+                description: 'Paper Tracker Workspace',
+                accept: {
+                  'application/json': ['.ptrk'],
+                },
               },
-            },
-          ],
-        });
-        setFileHandle(handle);
+            ],
+          });
+          setFileHandle(handle);
+        }
+        // @ts-ignore
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(currentWs, null, 2));
+        await writable.close();
+      } else {
+        const blob = new Blob([JSON.stringify(currentWs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentWs.name.replace(/\s+/g, '_')}.ptrk`;
+        a.click();
+        URL.revokeObjectURL(url);
       }
-      // @ts-ignore
-      const writable = await handle.createWritable();
-      await writable.write(JSON.stringify(currentWs, null, 2));
-      await writable.close();
       setWorkspace(currentWs);
+      setIsDirty(false);
+      setLastSavedTime(new Date());
     } catch (error) {
       console.error("Failed to save file", error);
+    }
+  };
+
+  const saveAsWorkspace = async (currentWs: WorkspaceData, fallbackName?: string) => {
+    if (!currentWs) return;
+    try {
+      if ('showSaveFilePicker' in window) {
+        // @ts-ignore
+        const handle = await window.showSaveFilePicker({
+          suggestedName: `${currentWs.name.replace(/\s+/g, '_')}.ptrk`,
+          types: [{ description: 'Paper Tracker Workspace', accept: { 'application/json': ['.ptrk'] } }],
+        });
+        setFileHandle(handle);
+        // @ts-ignore
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(currentWs, null, 2));
+        await writable.close();
+      } else {
+        const blob = new Blob([JSON.stringify(currentWs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        let finalName = currentWs.name.replace(/\s+/g, '_');
+        if (fallbackName && fallbackName.trim()) {
+           finalName = fallbackName.trim();
+        }
+        if (!finalName.endsWith('.ptrk')) finalName += '.ptrk';
+        
+        a.download = finalName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      setWorkspace(currentWs);
+      setIsDirty(false);
+      setLastSavedTime(new Date());
+    } catch (error) {
+      console.error("Failed to save file as", error);
     }
   };
 
   const updateWorkspace = (updater: (prev: WorkspaceData) => WorkspaceData) => {
     setWorkspace(prev => {
       if (!prev) return prev;
+      setIsDirty(true);
       return updater(prev);
     });
   };
@@ -164,6 +239,10 @@ export function useWorkspace() {
     createNewWorkspace,
     openWorkspace,
     saveWorkspace: () => workspace && saveWorkspace(workspace),
+    saveAsWorkspace: (fallbackName?: string) => workspace && saveAsWorkspace(workspace, fallbackName),
+    isDirty,
+    lastSavedTime,
+    hasFileSystemAccess: 'showSaveFilePicker' in window,
     addCollection,
     updateCollectionName,
     savePaper,
